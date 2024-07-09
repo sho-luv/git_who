@@ -80,6 +80,42 @@ Recent repositories:
 """
     return summary
 
+def get_user_behavior(username: str) -> str:
+    """Fetches the last 10 starred repositories and followed users for a given user."""
+    starred_repos_url = f"https://api.github.com/users/{username}/starred?per_page=10"
+    following_url = f"https://api.github.com/users/{username}/following?per_page=10"
+    
+    starred_repos_response = requests.get(starred_repos_url)
+    following_response = requests.get(following_url)
+    
+    starred_repos_data: List[Dict[str, Any]] = starred_repos_response.json()
+    following_data: List[Dict[str, Any]] = following_response.json()
+    
+    if 'message' in starred_repos_data and 'API rate limit exceeded' in starred_repos_data['message']:
+        print("[bold red]API rate limit exceeded. Please try again later or authenticate to increase your rate limit.[/bold red]")
+        return ""
+    
+    following_list = "\n".join([f"- {user['login']}" for user in following_data])
+    
+    behavior_summary = f"""
+Following:
+{following_list}
+"""
+    return behavior_summary
+
+def summarize_starred_repos(starred_repos: List[Dict[str, Any]]) -> str:
+    """Summarizes the information for starred repositories."""
+    if not starred_repos:
+        return "No starred repositories found."
+
+    repo_list = "\n".join([f"- {repo['full_name']}: {repo['stargazers_count']} stars - {repo['description']}" for repo in starred_repos])
+
+    summary = f"""
+Starred Repositories:
+{repo_list}
+"""
+    return summary
+
 async def ask_openai_summary(repos: List[Dict[str, Any]]) -> str:
     """Ask OpenAI to summarize the latest repositories."""
     repo_names = [repo['name'] for repo in repos[:5]]
@@ -102,6 +138,15 @@ async def process_username(username: str, verbose: bool = False) -> None:
     
     ai_summary = await ask_openai_summary(repos)
     print(f"\n[bold green]AI Summary:[/bold green]\n{ai_summary}")
+
+    behavior_summary = get_user_behavior(username)
+    print(f"\n[bold green]User Behavior:[/bold green]\n{behavior_summary}")
+
+    starred_repos_url = f"https://api.github.com/users/{username}/starred?per_page=10"
+    starred_repos_response = requests.get(starred_repos_url)
+    starred_repos_data: List[Dict[str, Any]] = starred_repos_response.json()
+    starred_summary = summarize_starred_repos(starred_repos_data)
+    print(f"\n[bold green]Starred Repositories Summary:[/bold green]\n{starred_summary}")
 
 def process_file(file_path: str, verbose: bool = False) -> None:
     """Processes each username in the given file."""
