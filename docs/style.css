@@ -85,7 +85,8 @@ a:hover {
 }
 
 /* ========== INDEX PAGE ========== */
-.index-page {
+.index-page,
+#search-page {
     display: flex;
     flex-direction: column;
     align-items: center;
