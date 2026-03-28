@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>gitwho - GitHub Profile Intelligence</title>
+    <meta name="description" content="GitHub OSINT & Profile Intelligence Tool. Analyze any GitHub user's repos, contributions, interests, and community standing.">
+    <meta property="og:title" content="gitwho - GitHub Profile Intelligence">
+    <meta property="og:description" content="Analyze any GitHub user's repos, contributions, interests, and community standing.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://sholuv.net/gitwho">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="theme-toggle" onclick="toggleTheme()" title="Toggle dark/light mode">
+        <span class="theme-icon">🌙</span>
+    </div>
+
+    <!-- Search page -->
+    <div id="search-page" class="page">
+        <div class="search-container">
+            <h1 class="logo">git<span class="accent">who</span></h1>
+            <p class="tagline">GitHub Profile Intelligence</p>
+
+            <div id="error-message" class="error-message" style="display:none;"></div>
+
+            <form id="search-form" class="search-form" onsubmit="doSearch(event)">
+                <div class="search-box">
+                    <input type="text" id="search-input" placeholder="Enter GitHub username or URL..." autocomplete="off" autofocus required>
+                    <button type="submit" id="search-btn" class="search-btn">Analyze</button>
+                </div>
+            </form>
+
+            <div id="loading-indicator" class="loading-indicator" style="display:none;">
+                <div class="spinner"></div>
+                <p class="loading-text">Analyzing <span id="loading-username"></span>...</p>
+                <p class="loading-subtext">Fetching repos, PRs, starred repos, followers, and more</p>
+            </div>
+
+            <div id="examples" class="examples">
+                <span>Try:</span>
+                <a href="#" onclick="searchUser('torvalds'); return false;">torvalds</a>
+                <a href="#" onclick="searchUser('sho-luv'); return false;">sho-luv</a>
+                <a href="#" onclick="searchUser('github'); return false;">github</a>
+            </div>
+        </div>
+        <footer class="index-footer">
+            <p>Open source OSINT tool — <a href="https://github.com/sho-luv/gitwho" target="_blank">GitHub</a></p>
+        </footer>
+    </div>
+
+    <!-- Results page -->
+    <div id="results-page" class="page" style="display:none;">
+        <header class="results-header">
+            <a href="#" onclick="showSearchPage(); return false;" class="header-logo">git<span class="accent">who</span></a>
+            <form class="header-search" onsubmit="doSearch(event)">
+                <input type="text" id="header-search-input" placeholder="Search another user...">
+                <button type="submit" id="header-go-btn">Go</button>
+                <span id="header-loading" class="header-loading" style="display:none;">
+                    <span class="header-spinner"></span>
+                    <span>Analyzing <span id="header-loading-username"></span>...</span>
+                </span>
+            </form>
+            <div class="theme-toggle" onclick="toggleTheme()" title="Toggle dark/light mode">
+                <span class="theme-icon">🌙</span>
+            </div>
+        </header>
+
+        <div class="results-layout">
+            <!-- Sidebar -->
+            <aside class="sidebar">
+                <div class="profile-card">
+                    <img id="r-avatar" src="" alt="" class="avatar">
+                    <h2 id="r-name" class="profile-name"></h2>
+                    <p id="r-username" class="profile-username"></p>
+                    <span id="r-org-badge" class="badge org-badge" style="display:none;">Organization</span>
+                    <p id="r-bio" class="profile-bio" style="display:none;"></p>
+
+                    <div class="profile-stats">
+                        <div class="stat"><span id="r-followers" class="stat-value">0</span><span class="stat-label">Followers</span></div>
+                        <div class="stat"><span id="r-following" class="stat-value">0</span><span class="stat-label">Following</span></div>
+                        <div class="stat"><span id="r-repos" class="stat-value">0</span><span class="stat-label">Repos</span></div>
+                    </div>
+
+                    <div id="r-details" class="profile-details"></div>
+                    <div id="r-orgs-section" style="display:none;">
+                        <div class="section-title">Organizations</div>
+                        <div id="r-orgs" class="org-list"></div>
+                    </div>
+                    <div id="r-achievements-section" style="display:none;">
+                        <div class="section-title">Achievements</div>
+                        <div id="r-achievements" class="achievement-list"></div>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Main content -->
+            <main class="main-content">
+                <!-- Profile Analysis -->
+                <section class="content-section">
+                    <h3 class="section-heading">Profile Analysis</h3>
+                    <p id="r-summary" class="analysis-summary"></p>
+                    <div id="r-focus-areas" class="focus-areas"></div>
+
+                    <div id="r-languages-section" class="language-chart" style="display:none;">
+                        <h4>Languages</h4>
+                        <div id="r-languages" class="lang-bar-container"></div>
+                    </div>
+
+                    <div id="r-metrics" class="metrics-grid"></div>
+                </section>
+
+                <!-- Repositories -->
+                <section class="content-section collapsible" id="repos-section">
+                    <h3 class="section-heading" onclick="toggleSection('repos-section')">
+                        <span id="r-repos-heading">Repositories</span>
+                        <span class="collapse-icon">▼</span>
+                    </h3>
+                    <div class="section-body">
+                        <table class="data-table">
+                            <thead><tr><th>Name</th><th>Stars</th><th>Forks</th><th>Language</th><th>Description</th></tr></thead>
+                            <tbody id="r-repos-table"></tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- Pull Requests -->
+                <section class="content-section collapsible" id="prs-section" style="display:none;">
+                    <h3 class="section-heading" onclick="toggleSection('prs-section')">
+                        Pull Requests to Other Projects
+                        <span class="collapse-icon">▼</span>
+                    </h3>
+                    <div class="section-body">
+                        <div class="pr-tabs">
+                            <button class="pr-tab active" onclick="showPRTab('merged', this)">Merged (<span id="r-pr-merged-count">0</span>)</button>
+                            <button class="pr-tab" onclick="showPRTab('open', this)">Pending (<span id="r-pr-open-count">0</span>)</button>
+                            <button class="pr-tab" onclick="showPRTab('closed', this)">Closed (<span id="r-pr-closed-count">0</span>)</button>
+                        </div>
+                        <div class="pr-content" id="pr-merged"></div>
+                        <div class="pr-content hidden" id="pr-open"></div>
+                        <div class="pr-content hidden" id="pr-closed"></div>
+                    </div>
+                </section>
+
+                <!-- Starred -->
+                <section class="content-section collapsible collapsed" id="starred-section" style="display:none;">
+                    <h3 class="section-heading" onclick="toggleSection('starred-section')">
+                        <span id="r-starred-heading">Starred Repositories</span>
+                        <span class="collapse-icon">▶</span>
+                    </h3>
+                    <div class="section-body">
+                        <table class="data-table">
+                            <thead><tr><th>Repository</th><th>Language</th><th>Stars</th><th>Description</th></tr></thead>
+                            <tbody id="r-starred-table"></tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- Network -->
+                <section class="content-section collapsible collapsed" id="network-section" style="display:none;">
+                    <h3 class="section-heading" onclick="toggleSection('network-section')">
+                        <span id="r-network-heading">Network</span>
+                        <span class="collapse-icon">▶</span>
+                    </h3>
+                    <div class="section-body">
+                        <div id="r-followers-section">
+                            <h4 id="r-followers-heading">Followers</h4>
+                            <div id="r-followers-grid" class="user-grid"></div>
+                        </div>
+                        <div id="r-following-section">
+                            <h4 id="r-following-heading">Following</h4>
+                            <div id="r-following-grid" class="user-grid"></div>
+                        </div>
+                    </div>
+                </section>
+            </main>
+        </div>
+
+        <footer class="results-footer">
+            <span>gitwho — GitHub Profile Intelligence</span>
+            <span class="footer-sep">|</span>
+            <span id="r-footer-cache"></span>
+        </footer>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
