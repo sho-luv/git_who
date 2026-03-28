@@ -1,0 +1,5 @@
+requests
+rich
+flask
+beautifulsoup4
+aiohttp

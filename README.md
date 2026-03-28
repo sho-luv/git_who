@@ -1,106 +1,132 @@
-# Git Who
+# gitwho
 
+GitHub OSINT & Profile Intelligence Tool
 
 ```
-python git_who.py                                   
+python3 gitwho.py
 
-             .                                                                         .   
-           .o8                                                                       .o8   
- .oooo.o .o888oo  .oooo.   oooo d8b       .ooooo oo oooo  oooo   .ooooo.   .oooo.o .o888oo 
-d88(  "8   888   `P  )88b  `888""8P      d88' `888  `888  `888  d88' `88b d88(  "8   888   
-`"Y88b.    888    .oP"888   888          888   888   888   888  888ooo888 `"Y88b.    888   
-o.  )88b   888 . d8(  888   888          888   888   888   888  888    .o o.  )88b   888 . 
-8""888P'   "888" `Y888""8o d888b         `V8bod888   `V88V"V8P' `Y8bod8P' 8""888P'   "888" 
-                                               888.                                        
-                                               8P'                                         
-                                               "                                           
+          _ __          __
+   ____ _(_) /__       / /_  ____
+  / __ `/ / __/ | /| / / __ \/ __ \
+ / /_/ / / /_ | |/ |/ / / / / /_/ /
+ \__, /_/\__/ |__/|__/_/ /_/\____/
+/____/
 
-usage: git_who.py [-h] [-v] username [username ...]
+GitHub OSINT & Profile Intelligence
 
-Process GitHub usernames or files containing usernames and summarize their repositories.
-
-positional arguments:
-  username       GitHub Usernames or Organization. Or files with usernames
-
-options:
-  -h, --help     show this help message and exit
-  -v, --verbose  Show all repositories, even those with 0 stars
+usage: gitwho.py [-h] [-w] [--port PORT] [-v] [--json] [username ...]
 ```
 
-This Python script fetches and summarizes information about GitHub repositories for a given user or organization. It leverages the GitHub API and OpenAI to provide detailed insights and summaries of the repositories.
+Comprehensive GitHub profile intelligence tool that collects and analyzes public GitHub data. Works as both a CLI tool and a web application.
 
-### Features
+## Features
 
-- Fetches all repositories for a given GitHub username or organization.
-- Sorts repositories by star count.
-- Summarizes the top repositories and their star counts.
-- Uses OpenAI to provide a detailed summary of recent work done on the repositories.
+- **Profile Intelligence**: Bio, location, company, followers, following, account age
+- **Repository Analysis**: All repos sorted by stars with language breakdown
+- **Pull Request Tracking**: PRs to other projects — merged, pending, and rejected
+- **Interest Profiling**: Rule-based analysis of focus areas from repos, starred repos, and languages
+- **Community Metrics**: Follower ratio, PR merge rate, star count, org memberships
+- **Achievements**: Scraped from GitHub profile (graceful fallback)
+- **Web Interface**: Google-like search page with dark/light mode
+- **JSON Output**: Machine-readable output for scripting
+- **Optional LLM Enhancement**: Ollama (local) or Hugging Face (cloud) for richer summaries
 
-### Requirements
+## Installation
+
+```bash
+git clone https://github.com/sho-luv/gitwho.git
+cd gitwho
+pip install -r requirements.txt
+```
+
+## Usage
+
+### CLI
+
+```bash
+# Analyze a user
+python3 gitwho.py sho-luv
+
+# Analyze from GitHub URL
+python3 gitwho.py https://github.com/torvalds
+
+# Multiple users
+python3 gitwho.py sho-luv torvalds github
+
+# Show all repos (including 0 stars)
+python3 gitwho.py sho-luv -v
+
+# JSON output
+python3 gitwho.py sho-luv --json
+
+# From a file of usernames
+python3 gitwho.py usernames.txt
+```
+
+### Web Interface
+
+```bash
+# Launch web server
+python3 gitwho.py --web
+
+# Custom port
+python3 gitwho.py --web --port 8080
+```
+
+Open `http://localhost:5000` in your browser.
+
+## Environment Variables
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `GITHUB_TOKEN` | No | GitHub personal access token. Increases rate limit from 60 to 5,000 requests/hour. |
+| `OLLAMA_URL` | No | Ollama server URL (e.g., `http://localhost:11434`) for local LLM summaries |
+| `HF_API_TOKEN` | No | Hugging Face API token for cloud LLM summaries |
+| `GITWHO_CACHE_TTL` | No | Web cache TTL in seconds (default: 3600) |
+
+### Getting a GitHub Token (Free)
+
+1. Go to GitHub → Settings → Developer settings → Personal access tokens → Fine-grained tokens
+2. Generate a new token with **no special permissions** (public data only)
+3. `export GITHUB_TOKEN=your_token_here`
+
+## Data Collected
+
+- **Profile**: Name, bio, location, company, blog, social links, account creation date
+- **Repositories**: All public repos with stars, forks, language, topics, descriptions
+- **Languages**: Aggregated byte-count breakdown across top 20 repos
+- **Pull Requests**: To other projects — merged (accepted), open (pending), closed (rejected)
+- **Starred Repos**: What the user follows/bookmarks
+- **Following/Followers**: Full network lists
+- **Organizations**: Org memberships
+- **Events**: Recent public activity
+- **Achievements**: Scraped from profile page (Arctic Code Vault, Pull Shark, etc.)
+
+## Project Structure
+
+```
+gitwho/
+├── gitwho.py          # CLI entry point
+├── github_api.py      # GitHub API data fetching
+├── analyzer.py        # Rule-based profile analysis + LLM plugins
+├── scraper.py         # HTML scraping for achievements
+├── requirements.txt
+├── web/
+│   ├── app.py         # Flask web application
+│   ├── templates/
+│   │   ├── index.html     # Search page
+│   │   └── results.html   # Results page
+│   └── static/
+│       ├── style.css      # Dark/light theme
+│       └── script.js      # Theme toggle, UI interactions
+└── README.md
+```
+
+## Requirements
+
 - Python 3.7+
-- requests library
-- argparse library
-- rich library for formatted terminal output
-- asyncio library for asynchronous tasks
-- typing library for type hints
-- OpenAI API access
-
-### Installation
-Clone the repository:
-
-```bash
-git clone https://github.com/sho-luv/git_who.git
-cd git_who
-```
-
-### Install the required libraries:
-
-```bash
-pip install requests rich
-```
-
-Make sure you have access to the OpenAI API and the ask_openai function is properly set up.
-
-### Usage
-To use the script, you can provide one or more GitHub usernames or organizations as arguments. You can also provide a file containing usernames.
-
-Examples
-Fetch and summarize repositories for a single user:
-
-```bash
-python git_who.py octocat
-```
-
-Fetch and summarize repositories for multiple users:
-
-```bash
-python git_who.py octocat github
-```
-
-Fetch and summarize repositories listed in a file:
-
-```bash
-python git_who.py usernames.txt
-```
-
-Enable verbose mode to show all repositories, even those with 0 stars:
-
-```bash
-python git_who.py octocat -v
-```
-### Sample Output
-```yaml
-GitHub user: octocat
-Total stars: 12345
-Most starred repo: Hello-World with 1234 stars
-
-Recent repositories:
-- Hello-World: 1234 stars
-- Spoon-Knife: 234 stars
-- Test: 123 stars
-- OctoRepo: 45 stars
-- AnotherRepo: 23 stars
-
-AI Summary:
-OpenAI generated summary of recent work on the repositories...
-```
+- requests
+- rich
+- flask
+- beautifulsoup4
+- aiohttp (optional, for LLM backends)

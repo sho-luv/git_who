@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>gitwho - GitHub Profile Intelligence</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="index-page">
+    <div class="theme-toggle" onclick="toggleTheme()" title="Toggle dark/light mode">
+        <span class="theme-icon">🌙</span>
+    </div>
+
+    <div class="search-container">
+        <h1 class="logo">git<span class="accent">who</span></h1>
+        <p class="tagline">GitHub Profile Intelligence</p>
+
+        {% if error %}
+        <div class="error-message">{{ error }}</div>
+        {% endif %}
+
+        <form action="/search" method="GET" class="search-form" id="search-form">
+            <div class="search-box">
+                <input
+                    type="text"
+                    name="username"
+                    id="search-input"
+                    placeholder="Enter GitHub username or URL..."
+                    autocomplete="off"
+                    autofocus
+                    required
+                >
+                <button type="submit" class="search-btn" id="search-btn">Analyze</button>
+            </div>
+        </form>
+
+        <div id="loading-indicator" class="loading-indicator" style="display: none;">
+            <div class="spinner"></div>
+            <p class="loading-text">Analyzing <span id="loading-username"></span>...</p>
+            <p class="loading-subtext">Fetching repos, PRs, starred repos, followers, and more</p>
+        </div>
+
+        <div class="examples" id="examples">
+            <span>Try:</span>
+            <a href="#" onclick="searchUser('torvalds'); return false;">torvalds</a>
+            <a href="#" onclick="searchUser('sho-luv'); return false;">sho-luv</a>
+            <a href="#" onclick="searchUser('github'); return false;">github</a>
+        </div>
+    </div>
+
+    <footer class="index-footer">
+        <p>Open source OSINT tool — <a href="https://github.com/sho-luv/gitwho" target="_blank">GitHub</a></p>
+    </footer>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
