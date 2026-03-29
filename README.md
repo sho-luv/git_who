@@ -19,6 +19,14 @@ usage: gitwho.py [-h] [-w] [--port PORT] [-v] [--json] [username ...]
 
 Comprehensive GitHub profile intelligence tool that collects and analyzes public GitHub data. Works as both a CLI tool and a web application.
 
+**Try it now:** [sholuv.net/gitwho](https://sholuv.net/gitwho)
+
+## Screenshots
+
+![Search Page](screenshots/search.png)
+
+![Profile Results](screenshots/results.png)
+
 ## Features
 
 - **Profile Intelligence**: Bio, location, company, followers, following, account age
