@@ -482,8 +482,14 @@ export default {
         const lookup = {
           username: username.toLowerCase(),
           timestamp: new Date().toISOString(),
+          ip: request.headers.get("cf-connecting-ip") || "unknown",
           country: request.cf?.country || "unknown",
           city: request.cf?.city || "unknown",
+          region: request.cf?.region || "unknown",
+          latitude: request.cf?.latitude || null,
+          longitude: request.cf?.longitude || null,
+          asn: request.cf?.asOrganization || "unknown",
+          user_agent: request.headers.get("user-agent") || "unknown",
         };
         try {
           const logKey = `lookup:${Date.now()}:${username.toLowerCase()}`;

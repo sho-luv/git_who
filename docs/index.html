@@ -45,37 +45,7 @@
             </div>
         </div>
         <footer class="index-footer">
-            <p>Open source OSINT tool — <a href="https://github.com/sho-luv/gitwho" target="_blank">GitHub</a> | <a href="#" onclick="showLookupsPage(); return false;">Recent Lookups</a></p>
-        </footer>
-    </div>
-
-    <!-- Lookups page -->
-    <div id="lookups-page" class="page" style="display:none;">
-        <header class="results-header">
-            <a href="#" onclick="showSearchPage(); return false;" class="header-logo">git<span class="accent">who</span></a>
-            <form class="header-search" onsubmit="doSearch(event)">
-                <input type="text" id="lookups-search-input" placeholder="Search another user...">
-                <button type="submit">Go</button>
-            </form>
-            <div class="theme-toggle" onclick="toggleTheme()" title="Toggle dark/light mode">
-                <span class="theme-icon">🌙</span>
-            </div>
-        </header>
-        <div class="lookups-container">
-            <h2 class="lookups-title">Recent Lookups</h2>
-            <p class="lookups-subtitle">Profiles searched on gitwho</p>
-            <div id="lookups-loading" class="loading-indicator" style="display:none;">
-                <div class="spinner"></div>
-                <p class="loading-text">Loading lookups...</p>
-            </div>
-            <table class="data-table" id="lookups-table" style="display:none;">
-                <thead><tr><th>Username</th><th>Time</th><th>Location</th></tr></thead>
-                <tbody id="lookups-tbody"></tbody>
-            </table>
-            <p id="lookups-empty" class="empty-state" style="display:none;">No lookups recorded yet.</p>
-        </div>
-        <footer class="results-footer">
-            <span>gitwho — GitHub Profile Intelligence</span>
+            <p>Open source OSINT tool — <a href="https://github.com/sho-luv/gitwho" target="_blank">GitHub</a></p>
         </footer>
     </div>
 
