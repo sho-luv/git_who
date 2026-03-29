@@ -477,6 +477,27 @@ export default {
     if (profileMatch) {
       const username = profileMatch[1];
 
+      // Log lookup
+      if (env.GITWHO_CACHE) {
+        const lookup = {
+          username: username.toLowerCase(),
+          timestamp: new Date().toISOString(),
+          country: request.cf?.country || "unknown",
+          city: request.cf?.city || "unknown",
+        };
+        try {
+          const logKey = `lookup:${Date.now()}:${username.toLowerCase()}`;
+          await env.GITWHO_CACHE.put(logKey, JSON.stringify(lookup), { expirationTtl: 86400 * 30 });
+
+          // Update lookup list (last 500)
+          const listRaw = await env.GITWHO_CACHE.get("lookups:recent", "json");
+          const list = listRaw || [];
+          list.unshift(lookup);
+          if (list.length > 500) list.length = 500;
+          await env.GITWHO_CACHE.put("lookups:recent", JSON.stringify(list));
+        } catch (e) { /* don't fail the request if logging fails */ }
+      }
+
       // Check cache
       const cacheKey = `gitwho:${username}`;
       const cacheTTL = parseInt(env.CACHE_TTL || "3600");
@@ -506,6 +527,19 @@ export default {
 
       return new Response(JSON.stringify(result), {
         headers: { ...CORS_HEADERS, "Content-Type": "application/json", "X-Cache": "MISS" },
+      });
+    }
+
+    // Route: /api/lookups
+    if (url.pathname === "/api/lookups") {
+      if (!env.GITWHO_CACHE) {
+        return new Response(JSON.stringify([]), {
+          headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+        });
+      }
+      const list = await env.GITWHO_CACHE.get("lookups:recent", "json") || [];
+      return new Response(JSON.stringify(list), {
+        headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
       });
     }
 

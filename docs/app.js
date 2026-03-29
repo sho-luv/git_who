@@ -41,6 +41,7 @@ function esc(str) {
 function showSearchPage() {
   document.getElementById("search-page").style.display = "";
   document.getElementById("results-page").style.display = "none";
+  document.getElementById("lookups-page").style.display = "none";
   document.getElementById("search-input").focus();
   history.pushState({}, "", window.location.pathname);
 }
@@ -48,6 +49,65 @@ function showSearchPage() {
 function showResultsPage() {
   document.getElementById("search-page").style.display = "none";
   document.getElementById("results-page").style.display = "";
+  document.getElementById("lookups-page").style.display = "none";
+}
+
+function showLookupsPage() {
+  document.getElementById("search-page").style.display = "none";
+  document.getElementById("results-page").style.display = "none";
+  document.getElementById("lookups-page").style.display = "";
+  history.pushState({}, "", "?tab=lookups");
+  loadLookups();
+}
+
+async function loadLookups() {
+  const loading = document.getElementById("lookups-loading");
+  const table = document.getElementById("lookups-table");
+  const empty = document.getElementById("lookups-empty");
+  const tbody = document.getElementById("lookups-tbody");
+
+  loading.style.display = "block";
+  table.style.display = "none";
+  empty.style.display = "none";
+
+  try {
+    const resp = await fetch(`${API_URL}/api/lookups`);
+    const lookups = await resp.json();
+    loading.style.display = "none";
+
+    if (lookups.length === 0) {
+      empty.style.display = "block";
+      return;
+    }
+
+    tbody.innerHTML = lookups.map((l) => {
+      const time = new Date(l.timestamp);
+      const ago = timeAgo(time);
+      const loc = l.city !== "unknown" ? `${esc(l.city)}, ${esc(l.country)}` : esc(l.country);
+      return `<tr>
+        <td><a href="?u=${esc(l.username)}" onclick="searchUser('${esc(l.username)}'); return false;">${esc(l.username)}</a></td>
+        <td title="${time.toLocaleString()}">${ago}</td>
+        <td>${loc}</td>
+      </tr>`;
+    }).join("");
+
+    table.style.display = "";
+  } catch (e) {
+    loading.style.display = "none";
+    empty.style.display = "block";
+    empty.textContent = "Failed to load lookups.";
+  }
+}
+
+function timeAgo(date) {
+  const seconds = Math.floor((new Date() - date) / 1000);
+  if (seconds < 60) return "just now";
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return minutes + "m ago";
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return hours + "h ago";
+  const days = Math.floor(hours / 24);
+  return days + "d ago";
 }
 
 // ========== Loading states ==========
@@ -305,16 +365,20 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 
-  // Check for ?u= parameter
+  // Check for ?u= or ?tab= parameter
   const params = new URLSearchParams(window.location.search);
   const u = params.get("u");
+  const tab = params.get("tab");
   if (u) searchUser(u);
+  else if (tab === "lookups") showLookupsPage();
 });
 
 // Handle browser back/forward
 window.addEventListener("popstate", function () {
   const params = new URLSearchParams(window.location.search);
   const u = params.get("u");
+  const tab = params.get("tab");
   if (u) searchUser(u);
+  else if (tab === "lookups") showLookupsPage();
   else showSearchPage();
 });
