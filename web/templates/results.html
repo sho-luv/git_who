@@ -323,9 +323,9 @@
                 </h3>
                 <div class="section-body">
                     {% if data.followers %}
-                    <h4>Followers{% if data.followers|length < data.profile.followers %} (showing {{ data.followers|length }} of <a href="https://github.com/{{ data.profile.login }}?tab=followers" target="_blank">{{ data.profile.followers }}</a>){% endif %}</h4>
+                    <h4>Followers{% if data.followers[:35]|length < data.profile.followers %} (showing {{ data.followers[:35]|length }} of <a href="https://github.com/{{ data.profile.login }}?tab=followers" target="_blank">{{ data.profile.followers }}</a>){% endif %}</h4>
                     <div class="user-grid">
-                        {% for user in data.followers[:30] %}
+                        {% for user in data.followers[:35] %}
                         <a href="/search?username={{ user.login }}" class="user-card" title="{{ user.login }}">
                             <img src="{{ user.avatar_url }}" alt="{{ user.login }}" class="user-avatar">
                             <span>{{ user.login }}</span>
@@ -335,9 +335,9 @@
                     {% endif %}
 
                     {% if data.following %}
-                    <h4>Following{% if data.following|length < data.profile.following %} (showing {{ data.following|length }} of <a href="https://github.com/{{ data.profile.login }}?tab=following" target="_blank">{{ data.profile.following }}</a>){% endif %}</h4>
+                    <h4>Following{% if data.following[:35]|length < data.profile.following %} (showing {{ data.following[:35]|length }} of <a href="https://github.com/{{ data.profile.login }}?tab=following" target="_blank">{{ data.profile.following }}</a>){% endif %}</h4>
                     <div class="user-grid">
-                        {% for user in data.following[:30] %}
+                        {% for user in data.following[:35] %}
                         <a href="/search?username={{ user.login }}" class="user-card" title="{{ user.login }}">
                             <img src="{{ user.avatar_url }}" alt="{{ user.login }}" class="user-avatar">
                             <span>{{ user.login }}</span>

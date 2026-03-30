@@ -266,19 +266,22 @@ function renderResults(data, analysis) {
   document.getElementById("network-section").style.display = hasNetwork ? "" : "none";
   document.getElementById("r-network-heading").textContent = `Network (${p.followers} followers, ${p.following} following)`;
 
-  const fHead = followers.length < p.followers
-    ? `Followers (showing ${followers.length} of <a href="https://github.com/${esc(p.login)}?tab=followers" target="_blank">${p.followers}</a>)`
+  const displayLimit = 35;
+  const fShown = Math.min(followers.length, displayLimit);
+  const fHead = fShown < p.followers
+    ? `Followers (showing ${fShown} of <a href="https://github.com/${esc(p.login)}?tab=followers" target="_blank">${p.followers}</a>)`
     : "Followers";
   document.getElementById("r-followers-heading").innerHTML = fHead;
-  document.getElementById("r-followers-grid").innerHTML = followers.slice(0, 30).map((u) =>
+  document.getElementById("r-followers-grid").innerHTML = followers.slice(0, displayLimit).map((u) =>
     `<a href="?u=${esc(u.login)}" class="user-card" title="${esc(u.login)}" onclick="searchUser('${esc(u.login)}'); return false;"><img src="${esc(u.avatar_url)}" class="user-avatar"><span>${esc(u.login)}</span></a>`
   ).join("");
 
-  const gHead = following.length < p.following
-    ? `Following (showing ${following.length} of <a href="https://github.com/${esc(p.login)}?tab=following" target="_blank">${p.following}</a>)`
+  const gShown = Math.min(following.length, displayLimit);
+  const gHead = gShown < p.following
+    ? `Following (showing ${gShown} of <a href="https://github.com/${esc(p.login)}?tab=following" target="_blank">${p.following}</a>)`
     : "Following";
   document.getElementById("r-following-heading").innerHTML = gHead;
-  document.getElementById("r-following-grid").innerHTML = following.slice(0, 30).map((u) =>
+  document.getElementById("r-following-grid").innerHTML = following.slice(0, displayLimit).map((u) =>
     `<a href="?u=${esc(u.login)}" class="user-card" title="${esc(u.login)}" onclick="searchUser('${esc(u.login)}'); return false;"><img src="${esc(u.avatar_url)}" class="user-avatar"><span>${esc(u.login)}</span></a>`
   ).join("");
 
