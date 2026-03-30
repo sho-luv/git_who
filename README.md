@@ -14,7 +14,7 @@ python3 gitwho.py
 
 GitHub OSINT & Profile Intelligence
 
-usage: gitwho.py [-h] [-w] [--port PORT] [-v] [--json] [username ...]
+usage: gitwho.py [-h] [-w] [--port PORT] [-v] [-l] [--json] [username ...]
 ```
 
 Comprehensive GitHub profile intelligence tool that collects and analyzes public GitHub data. Works as both a CLI tool and a web application.
@@ -63,6 +63,9 @@ python3 gitwho.py sho-luv torvalds github
 
 # Show all repos (including 0 stars)
 python3 gitwho.py sho-luv -v
+
+# Show URLs for PRs and repos
+python3 gitwho.py sho-luv --links
 
 # JSON output
 python3 gitwho.py sho-luv --json

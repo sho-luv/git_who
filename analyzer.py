@@ -5,6 +5,7 @@ Rule-based analysis with optional LLM enhancement (Ollama, Hugging Face).
 
 import os
 import asyncio
+from datetime import datetime, timezone
 from typing import Dict, Any, List, Tuple, Optional
 
 # Keyword taxonomy for categorization
@@ -249,6 +250,112 @@ def _generate_summary(
     return " ".join(parts)
 
 
+def _relative_time(iso_str: str) -> str:
+    """Convert ISO timestamp to relative time string."""
+    try:
+        dt = datetime.fromisoformat(iso_str.replace("Z", "+00:00"))
+        now = datetime.now(timezone.utc)
+        diff = now - dt
+        seconds = int(diff.total_seconds())
+        if seconds < 60:
+            return "just now"
+        minutes = seconds // 60
+        if minutes < 60:
+            return f"{minutes} minute{'s' if minutes != 1 else ''} ago"
+        hours = minutes // 60
+        if hours < 24:
+            return f"{hours} hour{'s' if hours != 1 else ''} ago"
+        days = hours // 24
+        if days < 30:
+            return f"{days} day{'s' if days != 1 else ''} ago"
+        months = days // 30
+        if months < 12:
+            return f"{months} month{'s' if months != 1 else ''} ago"
+        years = days // 365
+        return f"{years} year{'s' if years != 1 else ''} ago"
+    except (ValueError, TypeError):
+        return "unknown"
+
+
+def _compute_recent_activity(data: Dict[str, Any]) -> Dict[str, Any]:
+    """Compute recently active repos and activity summary from events."""
+    repos = data.get("repos", [])
+    events = data.get("events", [])
+
+    # Recently active repos: sort by pushed_at
+    repos_with_push = [r for r in repos if r.get("pushed_at")]
+    repos_with_push.sort(key=lambda r: r["pushed_at"], reverse=True)
+    recent_repos = []
+    for r in repos_with_push[:10]:
+        recent_repos.append({
+            "name": r["name"],
+            "language": r.get("language") or "",
+            "pushed_at": r["pushed_at"],
+            "pushed_at_relative": _relative_time(r["pushed_at"]),
+            "html_url": r.get("html_url", ""),
+        })
+
+    # Activity summary from events
+    if not events:
+        return {"recent_repos": recent_repos, "activity_summary": ""}
+
+    type_counts = {}
+    event_repos = set()
+    for e in events:
+        etype = e.get("type", "")
+        type_counts[etype] = type_counts.get(etype, 0) + 1
+        if e.get("repo"):
+            event_repos.add(e["repo"])
+
+    # Time span (from oldest event to now)
+    timestamps = sorted([e.get("created_at", "") for e in events if e.get("created_at")])
+    if len(timestamps) > 2:
+        # Drop bottom 10% to exclude outliers
+        trimmed = timestamps[max(1, len(timestamps) // 10):]
+        earliest_ts = trimmed[0]
+    elif timestamps:
+        earliest_ts = timestamps[0]
+    else:
+        earliest_ts = None
+
+    if earliest_ts:
+        try:
+            earliest = datetime.fromisoformat(earliest_ts.replace("Z", "+00:00"))
+            now = datetime.now(timezone.utc)
+            span_days = max(1, (now - earliest).days)
+        except (ValueError, TypeError):
+            span_days = 30
+    else:
+        span_days = 30
+
+    # Build summary text
+    friendly_names = {
+        "PushEvent": "pushes",
+        "PullRequestEvent": "pull requests",
+        "IssuesEvent": "issues",
+        "CreateEvent": "repo/branch creations",
+        "WatchEvent": "stars given",
+        "ForkEvent": "forks",
+        "IssueCommentEvent": "issue comments",
+        "PullRequestReviewEvent": "PR reviews",
+        "DeleteEvent": "deletions",
+        "ReleaseEvent": "releases",
+    }
+
+    sorted_types = sorted(type_counts.items(), key=lambda x: x[1], reverse=True)
+    top_activities = []
+    for etype, count in sorted_types[:3]:
+        name = friendly_names.get(etype, etype.replace("Event", "").lower() + " events")
+        top_activities.append(f"{count} {name}")
+
+    total_events = sum(type_counts.values())
+    summary = f"{total_events} events across {len(event_repos)} repos in the last {span_days} days."
+    if top_activities:
+        summary += f" Primarily {', '.join(top_activities)}."
+
+    return {"recent_repos": recent_repos, "activity_summary": summary}
+
+
 def analyze_profile(data: Dict[str, Any]) -> Dict[str, Any]:
     """Run complete rule-based profile analysis."""
     profile = data.get("profile", {})
@@ -283,11 +390,16 @@ def analyze_profile(data: Dict[str, Any]) -> Dict[str, Any]:
     # Generate summary
     summary = _generate_summary(username, top_categories, top_languages, metrics, profile)
 
+    # Recent activity
+    recent_activity = _compute_recent_activity(data)
+
     return {
         "summary": summary,
         "focus_areas": [{"category": cat, "score": round(score, 1)} for cat, score in top_categories[:6]],
         "languages": [{"language": lang, "percentage": round(pct, 1)} for lang, pct in top_languages],
         "metrics": metrics,
+        "recent_repos": recent_activity["recent_repos"],
+        "activity_summary": recent_activity["activity_summary"],
     }
 
 

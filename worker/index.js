@@ -267,6 +267,29 @@ async function fetchPullRequests(username, env) {
   };
 }
 
+// ========== Helpers ==========
+
+function relativeTime(isoStr) {
+  try {
+    const dt = new Date(isoStr);
+    const now = Date.now();
+    const seconds = Math.floor((now - dt.getTime()) / 1000);
+    if (seconds < 60) return "just now";
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes} minute${minutes !== 1 ? "s" : ""} ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours} hour${hours !== 1 ? "s" : ""} ago`;
+    const days = Math.floor(hours / 24);
+    if (days < 30) return `${days} day${days !== 1 ? "s" : ""} ago`;
+    const months = Math.floor(days / 30);
+    if (months < 12) return `${months} month${months !== 1 ? "s" : ""} ago`;
+    const years = Math.floor(days / 365);
+    return `${years} year${years !== 1 ? "s" : ""} ago`;
+  } catch {
+    return "unknown";
+  }
+}
+
 // ========== Analysis ==========
 
 function matchTextToCategories(text) {
@@ -392,11 +415,50 @@ function analyzeProfile(data) {
 
   if (profile.created_at) parts.push(`Active on GitHub since ${profile.created_at.slice(0, 4)}.`);
 
+  // Recent activity
+  const reposWithPush = repos.filter((r) => r.pushed_at).sort((a, b) => b.pushed_at.localeCompare(a.pushed_at));
+  const recentRepos = reposWithPush.slice(0, 10).map((r) => ({
+    name: r.name, language: r.language || "", pushed_at: r.pushed_at,
+    pushed_at_relative: relativeTime(r.pushed_at), html_url: r.html_url || "",
+  }));
+
+  let activitySummary = "";
+  const events = data.events || [];
+  if (events.length > 0) {
+    const typeCounts = {};
+    const eventRepos = new Set();
+    for (const e of events) {
+      typeCounts[e.type] = (typeCounts[e.type] || 0) + 1;
+      if (e.repo) eventRepos.add(e.repo);
+    }
+    const timestamps = events.filter((e) => e.created_at).map((e) => e.created_at).sort();
+    let spanDays = 30;
+    if (timestamps.length > 0) {
+      // Drop bottom 10% to exclude outliers
+      const trimIdx = timestamps.length > 2 ? Math.max(1, Math.floor(timestamps.length / 10)) : 0;
+      const earliest = new Date(timestamps[trimIdx]);
+      spanDays = Math.max(1, Math.round((Date.now() - earliest.getTime()) / 86400000));
+    }
+    const friendlyNames = {
+      PushEvent: "pushes", PullRequestEvent: "pull requests", IssuesEvent: "issues",
+      CreateEvent: "repo/branch creations", WatchEvent: "stars given", ForkEvent: "forks",
+      IssueCommentEvent: "issue comments", PullRequestReviewEvent: "PR reviews",
+      DeleteEvent: "deletions", ReleaseEvent: "releases",
+    };
+    const sortedTypes = Object.entries(typeCounts).sort((a, b) => b[1] - a[1]);
+    const topActivities = sortedTypes.slice(0, 3).map(([t, c]) => `${c} ${friendlyNames[t] || t.replace("Event", "").toLowerCase() + " events"}`);
+    const totalEvents = Object.values(typeCounts).reduce((a, b) => a + b, 0);
+    activitySummary = `${totalEvents} events across ${eventRepos.size} repos in the last ${spanDays} days.`;
+    if (topActivities.length > 0) activitySummary += ` Primarily ${topActivities.join(", ")}.`;
+  }
+
   return {
     summary: parts.join(" "),
     focus_areas: topCategories.slice(0, 6).map(([cat, score]) => ({ category: cat, score: Math.round(score * 10) / 10 })),
     languages: topLanguages,
     metrics,
+    recent_repos: recentRepos,
+    activity_summary: activitySummary,
   };
 }
 

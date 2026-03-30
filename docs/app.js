@@ -214,6 +214,20 @@ function renderResults(data, analysis) {
     <div class="metric-card"><span class="metric-value">${m.total_prs_to_others || 0}</span><span class="metric-label">PRs to Others</span></div>
   `;
 
+  // Recent Activity
+  const recentRepos = analysis.recent_repos || [];
+  const activitySummary = analysis.activity_summary || "";
+  const activitySection = document.getElementById("activity-section");
+  if (recentRepos.length > 0 || activitySummary) {
+    activitySection.style.display = "";
+    document.getElementById("r-activity-summary").textContent = activitySummary;
+    document.getElementById("r-recent-repos-table").innerHTML = recentRepos.map((r) =>
+      `<tr><td><a href="${esc(r.html_url)}" target="_blank">${esc(r.name)}</a></td><td>${esc(r.language)}</td><td class="dim">${esc(r.pushed_at_relative)}</td></tr>`
+    ).join("");
+  } else {
+    activitySection.style.display = "none";
+  }
+
   // Repos table
   document.getElementById("r-repos-heading").textContent = `Repositories (${data.repos.length})`;
   document.getElementById("r-repos-table").innerHTML = data.repos.slice(0, 50).map((r) =>

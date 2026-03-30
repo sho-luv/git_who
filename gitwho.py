@@ -54,7 +54,7 @@ def is_file(path: str) -> bool:
     return os.path.isfile(path)
 
 
-def display_profile(data: dict, analysis: dict, extras: dict, verbose: bool = False) -> None:
+def display_profile(data: dict, analysis: dict, extras: dict, verbose: bool = False, links: bool = False) -> None:
     """Display profile data in rich terminal format."""
     profile = data["profile"]
     repos = data["repos"]
@@ -130,6 +130,30 @@ def display_profile(data: dict, analysis: dict, extras: dict, verbose: bool = Fa
         console.print(f"  PR merge rate: {metrics.get('pr_merge_rate', 0)}%")
         console.print(f"  Follower ratio: {metrics.get('follower_ratio', 0)}")
 
+    # Recent Activity
+    activity_summary = analysis.get("activity_summary", "")
+    recent_repos = analysis.get("recent_repos", [])
+    if activity_summary:
+        console.print(f"\n[bold cyan]Recent Activity[/bold cyan]")
+        console.print(f"  {activity_summary}")
+    if recent_repos:
+        if not activity_summary:
+            console.print(f"\n[bold cyan]Recently Active Repos[/bold cyan]")
+        else:
+            console.print()
+        active_table = Table(show_header=True, header_style="bold")
+        active_table.add_column("Name", style="green")
+        active_table.add_column("Language")
+        active_table.add_column("Last Push", style="dim")
+        if links:
+            active_table.add_column("URL", style="dim")
+        for r in recent_repos:
+            row = [r["name"], r["language"], r["pushed_at_relative"]]
+            if links:
+                row.append(r.get("html_url", ""))
+            active_table.add_row(*row)
+        console.print(active_table)
+
     # Repositories table
     console.print(f"\n[bold cyan]Repositories ({len(repos)} total)[/bold cyan]")
     repo_table = Table(show_header=True, header_style="bold")
@@ -138,19 +162,24 @@ def display_profile(data: dict, analysis: dict, extras: dict, verbose: bool = Fa
     repo_table.add_column("Forks", justify="right")
     repo_table.add_column("Language")
     repo_table.add_column("Description", max_width=50)
+    if links:
+        repo_table.add_column("URL", style="dim")
 
     display_repos = repos if verbose else [r for r in repos if r["stars"] > 0]
     if not verbose and len(display_repos) < len(repos):
         console.print(f"  [dim](Showing {len(display_repos)} repos with stars. Use -v for all {len(repos)})[/dim]")
 
     for repo in display_repos[:30]:
-        repo_table.add_row(
+        row = [
             repo["name"],
             str(repo["stars"]),
             str(repo["forks"]),
             repo.get("language") or "",
             (repo.get("description") or "")[:50],
-        )
+        ]
+        if links:
+            row.append(repo.get("html_url") or "")
+        repo_table.add_row(*row)
     console.print(repo_table)
 
     # Pull Requests to other repos
@@ -164,17 +193,26 @@ def display_profile(data: dict, analysis: dict, extras: dict, verbose: bool = Fa
         if merged:
             console.print(f"\n  [bold green]Merged ({len(merged)}):[/bold green]")
             for pr in merged[:10]:
-                console.print(f"    [green]✓[/green] {pr['repo']}: {pr['title']}")
+                line = f"    [green]✓[/green] {pr['repo']}: {pr['title']}"
+                if links and pr.get('html_url'):
+                    line += f"\n      [dim]{pr['html_url']}[/dim]"
+                console.print(line)
 
         if open_prs:
             console.print(f"\n  [bold yellow]Pending ({len(open_prs)}):[/bold yellow]")
             for pr in open_prs[:10]:
-                console.print(f"    [yellow]○[/yellow] {pr['repo']}: {pr['title']}")
+                line = f"    [yellow]○[/yellow] {pr['repo']}: {pr['title']}"
+                if links and pr.get('html_url'):
+                    line += f"\n      [dim]{pr['html_url']}[/dim]"
+                console.print(line)
 
         if closed:
             console.print(f"\n  [bold red]Closed/Rejected ({len(closed)}):[/bold red]")
             for pr in closed[:10]:
-                console.print(f"    [red]✗[/red] {pr['repo']}: {pr['title']}")
+                line = f"    [red]✗[/red] {pr['repo']}: {pr['title']}"
+                if links and pr.get('html_url'):
+                    line += f"\n      [dim]{pr['html_url']}[/dim]"
+                console.print(line)
 
     # Starred repos summary
     starred = data.get("starred", [])
@@ -198,7 +236,7 @@ def display_profile(data: dict, analysis: dict, extras: dict, verbose: bool = Fa
                   f"{'Authenticated' if rl['authenticated'] else 'Unauthenticated (set GITHUB_TOKEN for higher limits)'}[/dim]")
 
 
-async def process_username(username: str, verbose: bool = False, output_json: bool = False) -> None:
+async def process_username(username: str, verbose: bool = False, output_json: bool = False, links: bool = False) -> None:
     """Process a single GitHub username."""
     username = extract_username(username)
     console.print(f"\n[bold]Fetching data for [green]{username}[/green]...[/bold]")
@@ -228,17 +266,17 @@ async def process_username(username: str, verbose: bool = False, output_json: bo
         }
         print(json.dumps(output, indent=2, default=str))
     else:
-        display_profile(data, analysis, extras, verbose)
+        display_profile(data, analysis, extras, verbose, links)
 
 
-def process_file(file_path: str, verbose: bool = False, output_json: bool = False) -> None:
+def process_file(file_path: str, verbose: bool = False, output_json: bool = False, links: bool = False) -> None:
     """Process each username in a file."""
     try:
         with open(file_path, 'r') as f:
             for line in f:
                 username = line.strip()
                 if username and not username.startswith("#"):
-                    asyncio.run(process_username(username, verbose, output_json))
+                    asyncio.run(process_username(username, verbose, output_json, links))
     except FileNotFoundError:
         console.print(f"[bold red]File {file_path} not found.[/bold red]")
 
@@ -256,6 +294,7 @@ def main():
     parser.add_argument("--port", type=int, default=5000, help="Web server port (default: 5000)")
     parser.add_argument("-v", "--verbose", action="store_true", help="Show all repos including 0 stars")
     parser.add_argument("--json", action="store_true", help="Output raw JSON")
+    parser.add_argument("-l", "--links", action="store_true", help="Show URLs for PRs and repos")
 
     if len(sys.argv) == 1:
         rprint(BANNER)
@@ -273,9 +312,9 @@ def main():
     elif args.username:
         for arg in args.username:
             if is_file(arg):
-                process_file(arg, args.verbose, args.json)
+                process_file(arg, args.verbose, args.json, args.links)
             else:
-                asyncio.run(process_username(arg, args.verbose, args.json))
+                asyncio.run(process_username(arg, args.verbose, args.json, args.links))
     else:
         rprint(BANNER)
         parser.print_help()

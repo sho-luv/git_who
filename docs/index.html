@@ -110,6 +110,16 @@
                     <div id="r-metrics" class="metrics-grid"></div>
                 </section>
 
+                <!-- Recent Activity -->
+                <section class="content-section" id="activity-section" style="display:none;">
+                    <h3 class="section-heading">Recent Activity</h3>
+                    <p id="r-activity-summary" class="analysis-summary"></p>
+                    <table class="data-table">
+                        <thead><tr><th>Name</th><th>Language</th><th>Last Push</th></tr></thead>
+                        <tbody id="r-recent-repos-table"></tbody>
+                    </table>
+                </section>
+
                 <!-- Repositories -->
                 <section class="content-section collapsible" id="repos-section">
                     <h3 class="section-heading" onclick="toggleSection('repos-section')">

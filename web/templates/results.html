@@ -166,6 +166,30 @@
                 {% endif %}
             </section>
 
+            <!-- Recent Activity -->
+            {% if analysis.get('recent_repos') or analysis.get('activity_summary') %}
+            <section class="content-section">
+                <h3 class="section-heading">Recent Activity</h3>
+                {% if analysis.get('activity_summary') %}
+                <p class="analysis-summary">{{ analysis.activity_summary }}</p>
+                {% endif %}
+                {% if analysis.get('recent_repos') %}
+                <table class="data-table">
+                    <thead><tr><th>Name</th><th>Language</th><th>Last Push</th></tr></thead>
+                    <tbody>
+                        {% for repo in analysis.recent_repos %}
+                        <tr>
+                            <td><a href="{{ repo.html_url }}" target="_blank">{{ repo.name }}</a></td>
+                            <td>{{ repo.language }}</td>
+                            <td class="dim">{{ repo.pushed_at_relative }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% endif %}
+            </section>
+            {% endif %}
+
             <!-- Repositories -->
             <section class="content-section collapsible" id="repos-section">
                 <h3 class="section-heading" onclick="toggleSection('repos-section')">
