@@ -105,7 +105,10 @@ function searchUser(username) {
 async function doSearch(event, presetUsername) {
   if (event) event.preventDefault();
 
-  const input = document.getElementById("search-input") || document.getElementById("header-search-input");
+  const resultsVisible = document.getElementById("results-page") && document.getElementById("results-page").style.display !== "none";
+  const input = resultsVisible
+    ? (document.getElementById("header-search-input") || document.getElementById("search-input"))
+    : (document.getElementById("search-input") || document.getElementById("header-search-input"));
   const raw = presetUsername || input.value;
   const username = extractUsername(raw);
   if (!username) return;

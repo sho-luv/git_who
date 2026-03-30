@@ -567,7 +567,7 @@ export default {
       }
 
       // Check cache
-      const cacheKey = `gitwho:${username}`;
+      const cacheKey = `gitwho:v2:${username}`;
       const cacheTTL = parseInt(env.CACHE_TTL || "3600");
 
       if (env.GITWHO_CACHE) {
