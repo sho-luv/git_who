@@ -4,7 +4,7 @@ compatibility_date = "2024-01-01"
 
 [[kv_namespaces]]
 binding = "GITWHO_CACHE"
-id = "YOUR_KV_NAMESPACE_ID"
+id = "" # Set your KV namespace ID here or use: wrangler kv:namespace create GITWHO_CACHE
 
 [vars]
 CACHE_TTL = "3600"

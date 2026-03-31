@@ -1,6 +1,7 @@
 // gitwho - Static frontend (calls Cloudflare Worker API)
 
-const API_URL = "https://gitwho-api.YOUR-SUBDOMAIN.workers.dev";
+// Configure this to point to your deployed Cloudflare Worker
+const API_URL = window.GITWHO_API_URL || "";
 
 // ========== Theme ==========
 function toggleTheme() {
