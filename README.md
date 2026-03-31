@@ -113,6 +113,37 @@ Open `http://localhost:5000` in your browser.
 - **Events**: Recent public activity
 - **Achievements**: Scraped from profile page (Arctic Code Vault, Pull Shark, etc.)
 
+## Cloudflare Worker Deployment (Optional)
+
+The `worker/` directory contains a Cloudflare Worker that powers the hosted web version at [sholuv.net/gitwho](https://sholuv.net/gitwho). To deploy your own:
+
+1. Install [Wrangler](https://developers.cloudflare.com/workers/wrangler/install-and-update/):
+   ```bash
+   npm install -g wrangler
+   ```
+
+2. Set up the Worker config:
+   ```bash
+   cp worker/wrangler.toml.example worker/wrangler.toml
+   ```
+
+3. Create a KV namespace and update `wrangler.toml` with the ID:
+   ```bash
+   wrangler kv:namespace create GITWHO_CACHE
+   ```
+
+4. Set your GitHub token as a Worker secret:
+   ```bash
+   wrangler secret put GITHUB_TOKEN
+   ```
+
+5. Deploy:
+   ```bash
+   cd worker && wrangler deploy
+   ```
+
+6. Update `docs/app.js` to point `API_URL` to your deployed Worker URL, or set `window.GITWHO_API_URL` before the script loads.
+
 ## Project Structure
 
 ```

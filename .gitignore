@@ -9,3 +9,4 @@ dist/
 build/
 .DS_Store
 worker/.wrangler/
+worker/wrangler.toml
