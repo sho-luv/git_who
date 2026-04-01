@@ -172,15 +172,23 @@ async function fetchRepoLanguages(owner, repo, env) {
 }
 
 async function fetchAllLanguages(username, repos, env, maxRepos = 20) {
-  const aggregated = {};
-  let counted = 0;
+  // Filter eligible repos first
+  const eligible = [];
   for (const repo of repos) {
-    if (counted >= maxRepos) break;
+    if (eligible.length >= maxRepos) break;
     if (repo.fork) {
       if (repo.pushed_at && repo.created_at && repo.pushed_at.slice(0, 10) <= repo.created_at.slice(0, 10)) continue;
     }
-    counted++;
-    const langs = await fetchRepoLanguages(username, repo.name, env);
+    eligible.push(repo);
+  }
+
+  // Fetch all languages in parallel
+  const results = await Promise.all(
+    eligible.map((repo) => fetchRepoLanguages(username, repo.name, env))
+  );
+
+  const aggregated = {};
+  for (const langs of results) {
     for (const [lang, bytes] of Object.entries(langs)) {
       aggregated[lang] = (aggregated[lang] || 0) + bytes;
     }
