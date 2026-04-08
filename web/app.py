@@ -15,7 +15,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from github_api import fetch_all, get_rate_limit_info
 from analyzer import analyze_profile, enhance_with_llm
 from scraper import scrape_profile_extras
-from gitwho import extract_username
+from gitwho import extract_username, is_valid_github_username
 
 import asyncio
 
@@ -87,6 +87,9 @@ def create_app():
             return render_template("index.html", error="Please enter a GitHub username or URL.")
 
         username = extract_username(raw_username)
+        if not is_valid_github_username(username):
+            return render_template("index.html", error="Invalid GitHub username.")
+
         data, analysis, extras = _fetch_profile(username)
 
         if data is None:
@@ -110,6 +113,9 @@ def create_app():
     @app.route("/api/profile/<username>")
     def api_profile(username):
         username = extract_username(username)
+        if not is_valid_github_username(username):
+            return jsonify({"error": "Invalid GitHub username"}), 400
+
         data, analysis, extras = _fetch_profile(username)
 
         if data is None:

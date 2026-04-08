@@ -37,6 +37,11 @@ BANNER = """[bold cyan]
 """
 
 
+def is_valid_github_username(username: str) -> bool:
+    """Validate GitHub username: alphanumeric + hyphens, max 39 chars."""
+    return bool(re.match(r'^[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,37}[a-zA-Z0-9])?$', username))
+
+
 def extract_username(arg: str) -> str:
     """Extract GitHub username from a URL or return as-is."""
     # Match github.com URLs
@@ -239,6 +244,9 @@ def display_profile(data: dict, analysis: dict, extras: dict, verbose: bool = Fa
 async def process_username(username: str, verbose: bool = False, output_json: bool = False, links: bool = False) -> None:
     """Process a single GitHub username."""
     username = extract_username(username)
+    if not is_valid_github_username(username):
+        console.print(f"[bold red]Invalid GitHub username: '{username}'[/bold red]")
+        return
     console.print(f"\n[bold]Fetching data for [green]{username}[/green]...[/bold]")
 
     # Fetch all GitHub data
@@ -308,7 +316,7 @@ def main():
         app = create_app()
         console.print(f"\n[bold green]Starting gitwho web server on port {args.port}...[/bold green]")
         console.print(f"[bold]Open http://localhost:{args.port} in your browser[/bold]\n")
-        app.run(host="0.0.0.0", port=args.port, debug=True)
+        app.run(host="0.0.0.0", port=args.port, debug=os.environ.get("FLASK_DEBUG", "").lower() == "true")
     elif args.username:
         for arg in args.username:
             if is_file(arg):

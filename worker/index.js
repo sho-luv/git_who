@@ -118,17 +118,33 @@ async function apiFetch(url, env, params = {}) {
   return resp;
 }
 
+function parseLastPage(linkHeader) {
+  if (!linkHeader) return null;
+  const match = linkHeader.match(/<[^>]*[?&]page=(\d+)[^>]*>;\s*rel="last"/);
+  return match ? parseInt(match[1], 10) : null;
+}
+
 async function paginatedFetch(url, env, perPage = 100, maxPages = 5) {
-  const results = [];
-  for (let page = 1; page <= maxPages; page++) {
-    const resp = await apiFetch(url, env, { page, per_page: perPage });
-    if (!resp.ok) break;
-    const data = await resp.json();
-    if (!Array.isArray(data) || data.length === 0) break;
-    results.push(...data);
-    if (data.length < perPage) break;
-  }
-  return results;
+  // Fetch page 1 to get data + total page count from Link header
+  const firstResp = await apiFetch(url, env, { page: 1, per_page: perPage });
+  if (!firstResp.ok) return [];
+  const firstData = await firstResp.json();
+  if (!Array.isArray(firstData) || firstData.length === 0) return [];
+  if (firstData.length < perPage) return firstData;
+
+  // Parse Link header to find last page, then fetch remaining pages in parallel
+  const lastPage = Math.min(parseLastPage(firstResp.headers.get("link")) || 1, maxPages);
+  if (lastPage <= 1) return firstData;
+
+  const remaining = await Promise.all(
+    Array.from({ length: lastPage - 1 }, (_, i) =>
+      apiFetch(url, env, { page: i + 2, per_page: perPage })
+        .then((r) => (r.ok ? r.json() : []))
+        .then((d) => (Array.isArray(d) ? d : []))
+    )
+  );
+
+  return [firstData, ...remaining].flat();
 }
 
 // ========== Data fetching ==========
@@ -197,7 +213,7 @@ async function fetchAllLanguages(username, repos, env, maxRepos = 20) {
 }
 
 async function fetchStarred(username, env) {
-  const starred = await paginatedFetch(`${API_BASE}/users/${username}/starred`, env, 100, 5);
+  const starred = await paginatedFetch(`${API_BASE}/users/${username}/starred`, env, 100, 2);
   return starred.map((r) => ({
     full_name: r.full_name, description: r.description,
     language: r.language, stars: r.stargazers_count || 0,
@@ -232,17 +248,26 @@ async function fetchEvents(username, env) {
 }
 
 async function searchPRs(query, env) {
-  const results = [];
-  for (let page = 1; page <= 3; page++) {
-    const resp = await apiFetch(`${API_BASE}/search/issues`, env, { q: query, per_page: 100, page });
-    if (!resp.ok) break;
-    const data = await resp.json();
-    const items = data.items || [];
-    if (items.length === 0) break;
-    results.push(...items);
-    if (items.length < 100) break;
-  }
-  return results;
+  // Fetch page 1, then remaining pages in parallel
+  const firstResp = await apiFetch(`${API_BASE}/search/issues`, env, { q: query, per_page: 100, page: 1 });
+  if (!firstResp.ok) return [];
+  const firstData = await firstResp.json();
+  const firstItems = firstData.items || [];
+  if (firstItems.length === 0 || firstItems.length < 100) return firstItems;
+
+  const totalCount = Math.min(firstData.total_count || 0, 300);
+  const totalPages = Math.min(Math.ceil(totalCount / 100), 3);
+  if (totalPages <= 1) return firstItems;
+
+  const remaining = await Promise.all(
+    Array.from({ length: totalPages - 1 }, (_, i) =>
+      apiFetch(`${API_BASE}/search/issues`, env, { q: query, per_page: 100, page: i + 2 })
+        .then((r) => (r.ok ? r.json() : { items: [] }))
+        .then((d) => d.items || [])
+    )
+  );
+
+  return [firstItems, ...remaining].flat();
 }
 
 async function fetchPullRequests(username, env) {
@@ -504,9 +529,15 @@ async function fetchAll(username, env) {
 
   const userType = profile.type || "User";
 
-  // Parallel fetch for independent data
-  const [repos, starred, following, followers, orgs, events, pullRequests, achievements] = await Promise.all([
-    fetchRepos(username, userType, env),
+  // Fetch repos + languages as a chain, parallel with everything else
+  async function fetchReposAndLanguages() {
+    const repos = await fetchRepos(username, userType, env);
+    const languages = await fetchAllLanguages(username, repos, env, 20);
+    return { repos, languages };
+  }
+
+  const [reposAndLangs, starred, following, followers, orgs, events, pullRequests, achievements] = await Promise.all([
+    fetchReposAndLanguages(),
     fetchStarred(username, env),
     fetchFollowing(username, env),
     fetchFollowers(username, env),
@@ -516,8 +547,7 @@ async function fetchAll(username, env) {
     scrapeAchievements(username),
   ]);
 
-  // Language aggregation (sequential - needs repos first, but repos already fetched)
-  const languages = await fetchAllLanguages(username, repos, env, 20);
+  const { repos, languages } = reposAndLangs;
 
   const data = {
     profile, repos, languages, starred, following,
@@ -546,6 +576,14 @@ export default {
     const profileMatch = url.pathname.match(/^\/api\/profile\/([^/]+)$/);
     if (profileMatch) {
       const username = profileMatch[1];
+
+      // Validate username
+      if (!/^[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,37}[a-zA-Z0-9])?$/.test(username)) {
+        return new Response(JSON.stringify({ error: "Invalid GitHub username" }), {
+          status: 400,
+          headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+        });
+      }
 
       // Log lookup
       if (env.GITWHO_CACHE) {
