@@ -655,9 +655,12 @@ export default {
         });
       }
 
-      // Store in cache
+      // Store in cache. A failed write (for example the daily KV write quota being
+      // exhausted) must not turn a successful lookup into a 500.
       if (env.GITWHO_CACHE) {
-        await env.GITWHO_CACHE.put(cacheKey, JSON.stringify(result), { expirationTtl: cacheTTL });
+        try {
+          await env.GITWHO_CACHE.put(cacheKey, JSON.stringify(result), { expirationTtl: cacheTTL });
+        } catch (e) { /* serve the result uncached */ }
       }
 
       return new Response(JSON.stringify(result), {
