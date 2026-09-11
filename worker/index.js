@@ -563,6 +563,13 @@ async function fetchAll(username, env) {
 
 // ========== Worker handler ==========
 
+// Automated crawlers (Meta, OpenAI, Anthropic, Bytedance, generic scrapers) were walking
+// the follower/following graph through this API, burning the KV write quota and the
+// GitHub API budget. The API is for the gitwho UI and CLI, not for bulk crawling.
+const CRAWLER_UA = /bot|crawl|spider|slurp|externalagent|externalhit|scrapy|python-requests|python-urllib|go-http-client|java\/|libwww|wget/i;
+
+const ROBOTS_TXT = "User-agent: *\nDisallow: /\n";
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -570,6 +577,11 @@ export default {
     // CORS preflight
     if (request.method === "OPTIONS") {
       return new Response(null, { headers: CORS_HEADERS });
+    }
+
+    // Tell well-behaved crawlers to stay out entirely
+    if (url.pathname === "/robots.txt") {
+      return new Response(ROBOTS_TXT, { headers: { "Content-Type": "text/plain" } });
     }
 
     // Route: /api/profile/:username
@@ -582,6 +594,15 @@ export default {
         return new Response(JSON.stringify({ error: "Invalid GitHub username" }), {
           status: 400,
           headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+        });
+      }
+
+      // Refuse crawlers before touching KV or GitHub. Nothing is logged for them.
+      const ua = request.headers.get("user-agent") || "";
+      if (CRAWLER_UA.test(ua)) {
+        return new Response(JSON.stringify({ error: "Automated crawling of this API is not permitted" }), {
+          status: 403,
+          headers: { ...CORS_HEADERS, "Content-Type": "application/json", "X-Robots-Tag": "noindex, nofollow" },
         });
       }
 
